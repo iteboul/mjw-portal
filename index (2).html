@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MJW Concession Portal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f4f0; color: #1a1a1a; min-height: 100vh; padding: 2rem;
+  }
+  .container { max-width: 780px; margin: 0 auto; }
+  .logo-row { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
+  .logo-mark {
+    width: 36px; height: 36px; background: #1a1a1a; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 15px; font-weight: 700; letter-spacing: -1px;
+  }
+  .logo-name { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+  .header { margin-bottom: 2rem; }
+  .header h1 { font-size: 22px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+  .header p { font-size: 14px; color: #666; }
+  .card { background: #fff; border-radius: 14px; border: 1px solid #e8e6e0; padding: 1.5rem; margin-bottom: 1.25rem; }
+  .card-label { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; }
+  .upload-zone {
+    border: 1.5px dashed #d0cec8; border-radius: 10px; padding: 2.5rem 2rem;
+    text-align: center; cursor: pointer; transition: all 0.15s; background: #faf9f7;
+  }
+  .upload-zone:hover { border-color: #1a1a1a; background: #f5f4f0; }
+  .upload-zone.drag-over { border-color: #1a1a1a; background: #f0efe9; }
+  .upload-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-title { font-size: 15px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px; }
+  .upload-sub { font-size: 13px; color: #888; }
+  #file-input { display: none; }
+  .browse-btn {
+    display: inline-block; margin-top: 12px; padding: 7px 16px;
+    background: #1a1a1a; color: white; border-radius: 7px;
+    font-size: 13px; font-weight: 500; cursor: pointer; border: none;
+  }
+  .browse-btn:hover { background: #333; }
+  .stat-row { display: flex; gap: 1rem; margin-bottom: 1rem; }
+  .stat { background: #f5f4f0; border-radius: 8px; padding: 10px 14px; flex: 1; text-align: center; }
+  .stat-num { font-size: 22px; font-weight: 600; color: #1a1a1a; }
+  .stat-label { font-size: 11px; color: #888; margin-top: 2px; }
+  .table-wrap { border: 1px solid #e8e6e0; border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: #f5f4f0; padding: 9px 12px; text-align: left;
+    font-weight: 600; font-size: 11px; color: #888;
+    text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid #e8e6e0;
+  }
+  tbody td { padding: 11px 12px; border-bottom: 1px solid #f0ede8; vertical-align: top; color: #1a1a1a; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: #faf9f7; }
+  .prop-name { font-weight: 500; font-size: 13px; }
+  .concession-preview { font-size: 12px; color: #444; line-height: 1.5; max-width: 340px; }
+  .concession-preview b { color: #1a1a1a; }
+  .no-special { color: #aaa; font-style: italic; font-size: 12px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge-active { background: #e8f5ee; color: #1a7a45; }
+  .badge-none { background: #f0ede8; color: #888; }
+  .actions { display: flex; gap: 10px; margin-top: 1.25rem; align-items: center; }
+  .btn-primary {
+    background: #1a1a1a; color: white; border: none; padding: 10px 20px;
+    border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer;
+    font-family: inherit; transition: background 0.15s;
+  }
+  .btn-primary:hover { background: #333; }
+  .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+  .btn-ghost {
+    background: transparent; color: #555; border: 1px solid #d0cec8;
+    padding: 10px 18px; border-radius: 8px; font-size: 14px;
+    cursor: pointer; font-family: inherit; transition: all 0.15s;
+  }
+  .btn-ghost:hover { background: #f5f4f0; color: #1a1a1a; }
+  .status-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 1rem;
+  }
+  .status-working { background: #e8f0fd; color: #1a4fa0; }
+  .status-success { background: #e8f5ee; color: #1a7a45; }
+  .status-error { background: #fdecea; color: #a01a1a; }
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid currentColor;
+    border-top-color: transparent; border-radius: 50%;
+    animation: spin 0.7s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .progress-list { list-style: none; }
+  .progress-list li {
+    display: flex; align-items: center; gap: 8px; padding: 6px 0;
+    font-size: 13px; color: #555; border-bottom: 1px solid #f5f4f0;
+  }
+  .progress-list li:last-child { border-bottom: none; }
+  .progress-list li.done { color: #1a7a45; }
+  .progress-list li.working { color: #1a4fa0; }
+  .progress-list li.fail { color: #a01a1a; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: currentColor; }
+  .done-actions { margin-top: 1.25rem; }
+  .hidden { display: none !important; }
+  .retry-note { font-size: 12px; color: #888; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo-row">
+    <div class="logo-mark">MJW</div>
+    <div class="logo-name">Investments</div>
+  </div>
+  <div class="header">
+    <h1>Concession update portal</h1>
+    <p>Upload your weekly Excel export to update all Notion email templates automatically.</p>
+  </div>
+
+  <div class="card" id="step-upload">
+    <div class="card-label">Step 1 — Upload your Excel file</div>
+    <div class="upload-zone" id="upload-zone">
+      <div class="upload-icon">📊</div>
+      <div class="upload-title">Drop your Yardi export here</div>
+      <div class="upload-sub">Exported from Yardi 7S · .xlsx format</div>
+      <button class="browse-btn" onclick="document.getElementById('file-input').click()">Browse files</button>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls,.csv" />
+  </div>
+
+  <div class="card hidden" id="step-review">
+    <div class="card-label">Step 2 — Review concessions</div>
+    <div class="stat-row" id="stat-row"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Property</th>
+            <th>What will appear in the email</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="review-body"></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="btn-primary" id="btn-update" onclick="runUpdate()">Update Notion templates</button>
+      <button class="btn-ghost" onclick="resetPortal()">Start over</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="step-progress">
+    <div class="card-label">Step 3 — Updating Notion</div>
+    <div class="status-row status-working" id="status-bar">
+      <div class="spinner"></div>
+      <span id="status-text">Updating templates...</span>
+    </div>
+    <p class="retry-note" id="retry-note"></p>
+    <ul class="progress-list" id="progress-list"></ul>
+  </div>
+
+  <div class="card hidden" id="step-done">
+    <div class="status-row status-success">
+      <span>✓</span>
+      <span id="done-text">All templates updated successfully.</span>
+    </div>
+    <p style="font-size:13px;color:#555;margin-top:10px;">
+      First Contact and Follow Up — No Response pages have been updated in Notion. Your team will see the changes immediately.
+    </p>
+    <div class="done-actions">
+      <button class="btn-ghost" onclick="resetPortal()">Upload another file</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const NOTION_TOKEN = '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';
+const NOTION_VERSION = '2022-06-28';
+const PROXY = 'https://corsproxy.io/?';
+
+const PROPERTY_MAP = {
+  '113oxn':  'Oxnard Plaza Apartments',
+  '137syl':  'Sylvan Gardens',
+  '233laf':  'Chateau Lafayette (233)',
+  '260elm':  'Elmwood Apartments (260)',
+  '354laf':  'City Park View (354)',
+  '450lafa': 'Marquis La Fayette (450)',
+  'arden':   'Arden Park Apartments',
+  'barton':  'Barton Apartments',
+  'capri':   'Capri Apartments',
+  'covsq':   'Coventry Square Apartments',
+  'delano':  'Delano Apartments',
+  'eastcrt': 'The Ridge at Bellevue',
+  'federal': 'Federal Apartments',
+  'hiddlke': 'The Laurel Apartments',
+  'hobart':  'Hobart Apartments',
+  'kentwood':'Kentwood Apartments',
+  'occident':'Occidental Apartments',
+  'sunpark': 'Sunset Park Apartments',
+  'wilson':  'Wilson Apartments'
+};
+
+const FIRST_CONTACT_PARENT = '38a75cc43a2780adacb0c89aff8b4d9c';
+const FOLLOW_UP_PARENT     = '38a75cc43a27818e902cdcca143c3c2f';
+
+const CONCESSION_MARKERS = [
+  'additionally, we\'re offering',
+  'for a limited time, we\'re offering',
+  'limited-time promotion',
+  'limited time promotion',
+  "we're offering a limited"
+];
+
+let parsedData = [];
+
+const uploadZone = document.getElementById('upload-zone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+});
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) processFile(e.target.files[0]);
+});
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      let sheet = null;
+      for (const name of wb.SheetNames) {
+        if (/^\d{2}\.\d{2}$/.test(name)) { sheet = name; break; }
+      }
+      if (!sheet) sheet = wb.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheet], { header: 1, defval: null });
+      extractConcessions(rows);
+    } catch(err) {
+      alert('Could not read the file. Make sure it is an .xlsx export from Yardi 7S.');
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function extractConcessions(rows) {
+  const found = {};
+  for (const row of rows) {
+    if (!row || row.length < 20) continue;
+    const code = row[1];
+    if (code && typeof code === 'string') {
+      const key = code.toLowerCase().trim();
+      if (PROPERTY_MAP[key] && !(key in found)) {
+        const special = row[19];
+        found[key] = (special && typeof special === 'string' && special.trim().length > 3)
+          ? special.trim() : null;
+      }
+    }
+  }
+  parsedData = Object.entries(PROPERTY_MAP).map(([code, name]) => ({
+    code, name, concession: found[code] || null
+  }));
+  renderReview();
+}
+
+// Build the rich_text blocks Notion expects — plain prefix + bold concession details
+function buildRichText(raw) {
+  if (!raw) return null;
+
+  // Clean up raw Yardi text
+  let detail = raw.trim();
+  detail = detail.replace(/^Move-In Special:\s*/i, '');
+  detail = detail.replace(/^Move In Special:\s*/i, '');
+  detail = detail.replace(/^Summer Special:\s*/i, '');
+  detail = detail.replace(/^Move-In Special\s*/i, '');
+  detail = detail.replace(/!+$/, '').trim();
+
+  // Capitalize first letter of detail
+  detail = detail.charAt(0).toUpperCase() + detail.slice(1);
+
+  return [
+    {
+      type: 'text',
+      text: { content: 'Additionally, we\'re offering a limited-time promotion on select units: ' },
+      annotations: { bold: false }
+    },
+    {
+      type: 'text',
+      text: { content: detail },
+      annotations: { bold: true }
+    },
+    {
+      type: 'text',
+      text: { content: '. Please note, this promotion is subject to change & our availability is moving quickly so we recommend scheduling in advance if you\'re interested.' },
+      annotations: { bold: false }
+    }
+  ];
+}
+
+function buildPreviewHTML(raw) {
+  if (!raw) return '<span class="no-special">No active special — promotion line will be removed from template</span>';
+  let detail = raw.trim()
+    .replace(/^Move-In Special:\s*/i, '')
+    .replace(/^Move In Special:\s*/i, '')
+    .replace(/^Summer Special:\s*/i, '')
+    .replace(/^Move-In Special\s*/i, '')
+    .replace(/!+$/, '').trim();
+  detail = detail.charAt(0).toUpperCase() + detail.slice(1);
+  return `Additionally, we're offering a limited-time promotion on select units: <b>${detail}</b>. Please note, this promotion is subject to change & our availability is moving quickly so we recommend scheduling in advance if you're interested.`;
+}
+
+function renderReview() {
+  const withSpecial = parsedData.filter(p => p.concession).length;
+  const without = parsedData.length - withSpecial;
+  document.getElementById('stat-row').innerHTML = `
+    <div class="stat"><div class="stat-num">${parsedData.length}</div><div class="stat-label">Properties</div></div>
+    <div class="stat"><div class="stat-num" style="color:#1a7a45">${withSpecial}</div><div class="stat-label">Active specials</div></div>
+    <div class="stat"><div class="stat-num" style="color:#888">${without}</div><div class="stat-label">No special</div></div>
+  `;
+  const tbody = document.getElementById('review-body');
+  tbody.innerHTML = '';
+  for (const prop of parsedData) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="prop-name">${prop.name}</div></td>
+      <td><div class="concession-preview">${buildPreviewHTML(prop.concession)}</div></td>
+      <td>${prop.concession
+        ? '<span class="badge badge-active">● Active</span>'
+        : '<span class="badge badge-none">Removed</span>'}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+  document.getElementById('step-upload').classList.add('hidden');
+  document.getElementById('step-review').classList.remove('hidden');
+}
+
+// Notion API with retry on rate limit
+async function notionFetch(path, method, body, retries) {
+  retries = retries || 0;
+  const url = PROXY + encodeURIComponent('https://api.notion.com/v1' + path);
+  const opts = {
+    method: method || 'GET',
+    headers: {
+      'Authorization': 'Bearer ' + NOTION_TOKEN,
+      'Notion-Version': NOTION_VERSION,
+      'Content-Type': 'application/json'
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+
+  // Rate limit — wait and retry up to 4 times
+  if (res.status === 429 && retries < 4) {
+    const wait = (retries + 1) * 2000;
+    document.getElementById('retry-note').textContent =
+      `Rate limit hit — waiting ${wait/1000}s before continuing...`;
+    await new Promise(r => setTimeout(r, wait));
+    document.getElementById('retry-note').textContent = '';
+    return notionFetch(path, method, body, retries + 1);
+  }
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err);
+  }
+  return res.json();
+}
+
+async function getChildren(pageId) {
+  const data = await notionFetch(`/blocks/${pageId}/children?page_size=100`, 'GET');
+  return data.results || [];
+}
+
+async function findPageByTitle(parentId, title) {
+  const children = await getChildren(parentId);
+  for (const block of children) {
+    if (block.type === 'child_page' && block.child_page.title === title) {
+      return block.id;
+    }
+  }
+  return null;
+}
+
+async function updatePageConcession(pageId, richText) {
+  const blocks = await getChildren(pageId);
+
+  for (const block of blocks) {
+    const rt = block[block.type] && block[block.type].rich_text;
+    if (!rt) continue;
+    const text = rt.map(r => r.plain_text).join('').toLowerCase();
+    const isMatch = CONCESSION_MARKERS.some(m => text.includes(m));
+    if (!isMatch) continue;
+
+    if (!richText) {
+      // No active special — delete the concession line entirely
+      await notionFetch(`/blocks/${block.id}`, 'DELETE');
+    } else {
+      // Update with new bold-formatted concession line
+      await notionFetch(`/blocks/${block.id}`, 'PATCH', {
+        [block.type]: { rich_text: richText }
+      });
+    }
+    // Small pause between block updates to avoid rate limits
+    await new Promise(r => setTimeout(r, 400));
+  }
+}
+
+async function runUpdate() {
+  document.getElementById('btn-update').disabled = true;
+  document.getElementById('step-review').classList.add('hidden');
+  document.getElementById('step-progress').classList.remove('hidden');
+
+  const progressList = document.getElementById('progress-list');
+  const statusBar = document.getElementById('status-bar');
+  const results = [];
+
+  for (const prop of parsedData) {
+    const li = document.createElement('li');
+    li.className = 'working';
+    li.innerHTML = `<div class="dot"></div>${prop.name}`;
+    progressList.appendChild(li);
+
+    try {
+      const richText = buildRichText(prop.concession);
+
+      // Update First Contact page
+      const fcId = await findPageByTitle(FIRST_CONTACT_PARENT, prop.name);
+      if (fcId) await updatePageConcession(fcId, richText);
+
+      // Update Follow Up - No Response page
+      const fuId = await findPageByTitle(FOLLOW_UP_PARENT, 'Still Interested? (No Response)');
+      if (fuId) await updatePageConcession(fuId, richText);
+
+      li.className = 'done';
+      li.innerHTML = `<div class="dot"></div>${prop.name} — updated`;
+      results.push({ success: true });
+    } catch(err) {
+      li.className = 'fail';
+      li.innerHTML = `<div class="dot"></div>${prop.name} — failed`;
+      results.push({ success: false, err: err.message });
+    }
+
+    // Pause between properties to stay under Notion rate limits
+    await new Promise(r => setTimeout(r, 1200));
+  }
+
+  const failed = results.filter(r => !r.success).length;
+  const succeeded = results.filter(r => r.success).length;
+
+  if (failed === 0) {
+    statusBar.className = 'status-row status-success';
+    statusBar.innerHTML = `<span>✓</span><span>All ${succeeded} properties updated</span>`;
+    setTimeout(() => {
+      document.getElementById('step-progress').classList.add('hidden');
+      document.getElementById('step-done').classList.remove('hidden');
+      document.getElementById('done-text').textContent =
+        `${succeeded} properties updated across First Contact and Follow Up — No Response.`;
+    }, 800);
+  } else {
+    statusBar.className = 'status-row status-error';
+    statusBar.innerHTML = `<span>✕</span><span>${failed} failed, ${succeeded} succeeded. Try running again — rate limits reset quickly.</span>`;
+  }
+}
+
+function resetPortal() {
+  parsedData = [];
+  document.getElementById('file-input').value = '';
+  document.getElementById('review-body').innerHTML = '';
+  document.getElementById('progress-list').innerHTML = '';
+  document.getElementById('btn-update').disabled = false;
+  document.getElementById('retry-note').textContent = '';
+  document.getElementById('status-bar').className = 'status-row status-working';
+  document.getElementById('status-bar').innerHTML = '<div class="spinner"></div><span>Updating templates...</span>';
+  ['step-review','step-progress','step-done'].forEach(id =>
+    document.getElementById(id).classList.add('hidden'));
+  document.getElementById('step-upload').classList.remove('hidden');
+}
+</script>
+</body>
+</html>
